@@ -1,10 +1,11 @@
 import pytest
 import pandas as pd
 import numpy as np
-from unittest.mock import patch
 import os
+import boto3
+from botocore.exceptions import ClientError
 
-from app.train import train_model, train_pipeline, s3_files_exist
+from app.train import train_model
 
 
 # ==========================================
@@ -43,6 +44,35 @@ def mock_df():
 
 
 # ==========================================
+# S3 HELPER
+# ==========================================
+def check_s3_files_exist(run_id: str) -> bool:
+    """Check if both departure and arrival files exist on S3."""
+    bucket = os.getenv("BUCKET")
+    if not bucket:
+        pytest.skip("BUCKET secret not available (running locally?)")
+
+    s3 = boto3.client("s3")
+    prefix = f"processed/train/{run_id}"
+
+    required_files = [
+        f"{prefix}/final_departures_{run_id}.parquet",
+        f"{prefix}/final_arrivals_{run_id}.parquet"
+    ]
+
+    for key in required_files:
+        try:
+            s3.head_object(Bucket=bucket, Key=key)
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                print(f"❌ File not found on S3: {key}")
+                return False
+            else:
+                raise
+    return True
+
+
+# ==========================================
 # TESTS
 # ==========================================
 def test_train_model_runs_without_error(mock_df):
@@ -62,17 +92,18 @@ def test_train_model_runs_without_error(mock_df):
 
 def test_s3_files_exist_real():
     """
-    Real S3 test: checks if the training files exist on S3
-    using the default run_id.
+    Real S3 test.
+    - Works in GitHub Actions (secrets are injected)
+    - Skips gracefully if running locally without secrets
     """
     run_id = os.getenv("TEST_RUN_ID", DEFAULT_RUN_ID)
 
     print(f"\n🔍 Checking real S3 files for run_id: {run_id}")
 
-    exists = s3_files_exist(run_id)
+    exists = check_s3_files_exist(run_id)
 
     assert exists is True, (
-        f" Files not found on S3 for run_id='{run_id}'.\n"
+        f"❌ Files not found on S3 for run_id='{run_id}'.\n"
         f"Expected files:\n"
         f"  - processed/train/{run_id}/final_departures_{run_id}.parquet\n"
         f"  - processed/train/{run_id}/final_arrivals_{run_id}.parquet"
