@@ -4,7 +4,7 @@ name: californian_housing_market
 # Since you are building the image dynamically with --build-image, 
 # you just need a basic Dockerfile pointer.
 docker_env:
-  image: ${{ secrets.DOCKER_USERNAME }}/sample-ml-workflow:latest
+  image: patludolead38/sample-ml-workflow:latest
 
 entry_points:
   main:
