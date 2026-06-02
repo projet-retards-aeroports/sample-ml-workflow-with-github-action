@@ -85,7 +85,6 @@ def test_train_model_runs_without_error(mock_df):
         depth=4,
         learning_rate=0.1,
         task_type="CPU",
-        verbose=0
     )
     assert model is not None
 
