@@ -1,6 +1,6 @@
 def run_training(args):
     start_time = time.time()
- 
+        
     df = load_data(DATA_URL)
     X_train, X_test, y_train, y_test = preprocess_data(df)
 
