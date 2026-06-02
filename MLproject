@@ -5,8 +5,7 @@ name: californian_housing_market
 # you just need a basic Dockerfile pointer.
 docker_env:
   image: patludolead38/sample-ml-workflow:latest
-
-environment:
+  environment:                    # ← Doit être indenté sous docker_env
     - MLFLOW_TRACKING_URI
     - MLFLOW_EXPERIMENT_NAME
     - AWS_ACCESS_KEY_ID
