@@ -6,6 +6,13 @@ name: californian_housing_market
 docker_env:
   image: patludolead38/sample-ml-workflow:latest
 
+environment:
+    - MLFLOW_TRACKING_URI
+    - MLFLOW_EXPERIMENT_NAME
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - AWS_DEFAULT_REGION
+
 entry_points:
   main:
     parameters:
