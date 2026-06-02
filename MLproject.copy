@@ -1,0 +1,23 @@
+name: californian_housing_market
+
+# 1. Use Docker Environment
+# Since you are building the image dynamically with --build-image, 
+# you just need a basic Dockerfile pointer.
+docker_env:
+  image: patludolead38/sample-ml-workflow:latest
+  environment:                    # ← Doit être indenté sous docker_env
+    - MLFLOW_TRACKING_URI
+    - MLFLOW_EXPERIMENT_NAME
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - AWS_DEFAULT_REGION
+
+entry_points:
+  main:
+    parameters:
+      n_estimators: {type: int, default: 30}
+      criterion: {type: string, default: "squared_error"}
+      experiment_name: {type: string, default: "Experience_1"}
+    
+    # 2. The Command
+    command: "python app/train.py --n_estimators {n_estimators} --criterion {criterion} --experiment_name {experiment_name}"
