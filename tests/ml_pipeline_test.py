@@ -2,103 +2,78 @@ import pytest
 import pandas as pd
 import numpy as np
 from unittest.mock import patch
-from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestRegressor
-from app.train import load_data, preprocess_data, create_pipeline, train_model
+import os
+
+from app.train import train_model, train_pipeline, s3_files_exist
+
 
 # ==========================================
-# 1. FIXTURES (Reusable Dummy Data)
+# DEFAULT RUN_ID
 # ==========================================
+DEFAULT_RUN_ID = "2026-05-25_124326_039dd1"
 
+
+# ==========================================
+# FIXTURES
+# ==========================================
 @pytest.fixture
 def mock_df():
-    """
-    Creates a small, deterministic DataFrame that mimics the real data structure.
-    This allows us to test logic without downloading 2MB of CSV files.
-    """
-    # Create 10 rows of dummy data with the same dimensions as typical housing data
+    """Small realistic DataFrame matching your airport data."""
+    np.random.seed(42)
+    n = 40
+
     data = {
-        'MedInc': np.random.rand(10),
-        'HouseAge': np.random.randint(10, 50, 10),
-        'AveRooms': np.random.rand(10) * 5,
-        'AveBedrms': np.random.rand(10) * 2,
-        'Population': np.random.randint(100, 1000, 10),
-        'AveOccup': np.random.rand(10) * 3,
-        'Latitude': np.random.rand(10) * 50,
-        'Longitude': np.random.rand(10) * 50,
-        'MedHouseVal': np.random.rand(10) * 100000 # The Target
+        'scheduled_utc': pd.date_range('2023-01-01', periods=n, freq='H'),
+        'revised_utc': pd.date_range('2023-01-01', periods=n, freq='H') 
+                       + pd.to_timedelta(np.random.randint(0, 180, n), unit='m'),
+        'flight_number': [f'AF{1000 + i}' for i in range(n)],
+        'delay_minutes': np.random.randint(-20, 160, n),
+        'aeroport_depart': np.random.choice(['CDG', 'ORY', 'NCE', 'LYS'], n),
+        'aeroport_arrivee': np.random.choice(['CDG', 'ORY', 'NCE', 'LYS'], n),
+        'terminal': np.random.choice(['1', '2', '3', '4'], n),
+        'airline_icao': np.random.choice(['AFR', 'EZY', 'RYR'], n),
+        'airline_name': np.random.choice(['Air France', 'EasyJet', 'Ryanair'], n),
+        'aircraft_model': np.random.choice(['A320', 'B737', 'A350'], n),
+        'aircraft_family': np.random.choice(['A320 Family', 'B737 Family'], n),
+        'aircraft_size_category': np.random.choice(['Narrow-body', 'Wide-body'], n),
+        'holiday_name': np.random.choice(['None', 'Christmas'], n),
+        'period_of_day': np.random.choice(['Morning', 'Afternoon', 'Evening'], n),
     }
     return pd.DataFrame(data)
 
+
 # ==========================================
-# 2. UNIT TESTS
+# TESTS
 # ==========================================
+def test_train_model_runs_without_error(mock_df):
+    """Fast smoke test (no S3 needed)."""
+    model = train_model(
+        df=mock_df,
+        model_name="Departure",
+        run_id="test-smoke-001",
+        iterations=30,
+        depth=4,
+        learning_rate=0.1,
+        task_type="CPU",
+        verbose=0
+    )
+    assert model is not None
 
-def test_load_data(mock_df):
-    """
-    Test loading data. We patch 'pd.read_csv' so it returns our 
-    mock_df instead of trying to go to the internet.
-    """
-    with patch('app.train.pd.read_csv') as mock_read_csv:
-        mock_read_csv.return_value = mock_df
-        
-        # We can pass any string here, it won't actually hit the URL
-        df = load_data("http://fake-url.com/data.csv")
-        
-        assert not df.empty
-        assert df.shape == (10, 9) # 9 columns (8 features + 1 target)
-        mock_read_csv.assert_called_once()
 
-def test_preprocess_data(mock_df):
+def test_s3_files_exist_real():
     """
-    Test that data splits correctly into 80/20 train/test.
+    Real S3 test: checks if the training files exist on S3
+    using the default run_id.
     """
-    X_train, X_test, y_train, y_test = preprocess_data(mock_df, test_size=0.2)
-    
-    # Check dimensions
-    assert len(X_train) == 8  # 80% of 10 rows
-    assert len(X_test) == 2   # 20% of 10 rows
-    
-    # Check that Target column is removed from Features (X)
-    assert 'MedHouseVal' not in X_train.columns
-    assert 'MedHouseVal' not in X_test.columns
+    run_id = os.getenv("TEST_RUN_ID", DEFAULT_RUN_ID)
 
-def test_create_pipeline():
-    """
-    Test that the pipeline contains the expected steps.
-    """
-    pipe = create_pipeline()
-    
-    # Check object type
-    assert isinstance(pipe, Pipeline)
-    
-    # Check steps existence
-    assert "standard_scaler" in pipe.named_steps
-    assert "Random_Forest" in pipe.named_steps
-    
-    # Check step types (Robustness check)
-    assert isinstance(pipe.named_steps['Random_Forest'], RandomForestRegressor)
+    print(f"\n🔍 Checking real S3 files for run_id: {run_id}")
 
-def test_train_model_smoke_test(mock_df):
-    """
-    A 'Smoke Test'. Instead of mocking fit(), we actually run it on 
-    the tiny mock_df. This catches bugs in parameter names that mocks miss.
-    """
-    # 1. Prepare data
-    X_train, X_test, y_train, y_test = preprocess_data(mock_df)
-    pipe = create_pipeline()
-    
-    # 2. Configure a minimal grid to make the test run instantly
-    # We use 1 estimator and 2 CV folds (since we only have 8 training rows)
-    param_grid = {
-        "Random_Forest__n_estimators": [1], 
-        "Random_Forest__criterion": ["squared_error"]
-    }
-    
-    # 3. Run Training
-    model = train_model(pipe, X_train, y_train, param_grid, cv=2)
-    
-    # 4. Assertions
-    assert model.best_estimator_ is not None
-    # Ensure it actually learned something (even if nonsense on random data)
-    assert hasattr(model.best_estimator_, 'predict')
+    exists = s3_files_exist(run_id)
+
+    assert exists is True, (
+        f" Files not found on S3 for run_id='{run_id}'.\n"
+        f"Expected files:\n"
+        f"  - processed/train/{run_id}/final_departures_{run_id}.parquet\n"
+        f"  - processed/train/{run_id}/final_arrivals_{run_id}.parquet"
+    )
