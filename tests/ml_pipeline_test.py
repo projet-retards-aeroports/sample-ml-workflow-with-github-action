@@ -6,6 +6,23 @@ import boto3
 from botocore.exceptions import ClientError
 
 from app.train import train_model
+import argparse
+import pandas as pd
+import io
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from catboost import CatBoostRegressor, Pool
+import mlflow                          # ← Make sure this is here
+import mlflow.catboost                 # ← Make sure this is here
+from dotenv import load_dotenv
+import boto3
+from botocore.exceptions import ClientError
+
+from src.pipelines.custom_libs.load_from import load_from_s3
 
 
 # ==========================================
