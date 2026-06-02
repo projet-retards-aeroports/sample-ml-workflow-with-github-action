@@ -11,7 +11,7 @@ entry_points:
     parameters:
       n_estimators: {type: int, default: 30}
       criterion: {type: string, default: "squared_error"}
-      experiment_name: {type: string, default: "california_housing"}
+      experiment_name: {type: string, default: "testPatLudo"}
     
     # 2. The Command
     command: "python app/train.py --n_estimators {n_estimators} --criterion {criterion} --experiment_name {experiment_name}"
