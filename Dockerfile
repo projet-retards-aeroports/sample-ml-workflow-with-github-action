@@ -17,9 +17,8 @@ COPY requirements.txt .
 RUN echo "===== CHECKING REQUIREMENTS =====" && \
     cat requirements.txt && \
     echo "=================================" && \
-    python -m pip install --upgrade pip
-    pip install --no-cache-dir -r requirements.txt && \
-
+    pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 # 5. Copy Application Code
 COPY . .
 
