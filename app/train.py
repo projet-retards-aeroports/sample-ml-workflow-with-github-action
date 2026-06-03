@@ -51,7 +51,8 @@ def train_model(df, model_name: str, run_id: str,
                 random_strength: float = 1.0,
                 bagging_temperature: float = 0.7):
 
-    with mlflow.start_run(run_name=f"{model_name}*{run_id}") as run:
+    #with mlflow.start_run(run_name=f"{model_name}*{run_id}") as run:
+    with mlflow.start_run() as run:
         print(f"\n=== Entraînement {model_name} ===")
 
         X = df.drop(columns=["scheduled_utc", "revised_utc", "flight_number", "delay_minutes"])
