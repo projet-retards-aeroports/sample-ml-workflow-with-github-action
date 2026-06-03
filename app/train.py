@@ -154,11 +154,11 @@ def train_pipeline(run_id: str = None, experiment_name: str = "Experience_1", **
     print(f"=== Lancement du Train Pipeline - Run ID: {run_id} ===\n")
 
     # Departures
-    depart_bytes = load_from_s3(f"processed/train/{run_id}", f"final_departures_{run_id}.parquet")
-    if depart_bytes is None:
-        raise FileNotFoundError(f"Could not load departures file for run_id: {run_id}")
-    df_depart = pd.read_parquet(io.BytesIO(depart_bytes))
-    train_model(df_depart, "Departure", run_id, **catboost_params)
+    #depart_bytes = load_from_s3(f"processed/train/{run_id}", f"final_departures_{run_id}.parquet")
+    #if depart_bytes is None:
+    #    raise FileNotFoundError(f"Could not load departures file for run_id: {run_id}")
+    #df_depart = pd.read_parquet(io.BytesIO(depart_bytes))
+    #train_model(df_depart, "Departure", run_id, **catboost_params)
 
     # Arrivals
     arrive_bytes = load_from_s3(f"processed/train/{run_id}", f"final_arrivals_{run_id}.parquet")
