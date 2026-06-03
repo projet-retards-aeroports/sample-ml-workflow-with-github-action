@@ -15,7 +15,7 @@ from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 import argparse  # ← Important
 
-# ===================
+# ====================
 load_dotenv()
 
 # ====================== S3 LOADING ======================
@@ -88,13 +88,20 @@ def train_model(df, model_name: str, run_id: str,
 
         model.fit(train_pool, eval_set=val_pool, use_best_model=True)
 
-        # Log parameters
-        mlflow.log_params({
-            **model.get_params(),
+        # Log parameters (version corrigée pour éviter le conflit int/float)
+        params_to_log = {
             "early_stopping_rounds": early_stopping_rounds,
-            "best_iteration": model.get_best_iteration()
-        })
+            "best_iteration": model.get_best_iteration(),
+            **{k: v for k, v in model.get_params().items() 
+               if k not in ["l2_leaf_reg", "random_strength", "bagging_temperature"]}
+        }
+        
+        # On log manuellement les paramètres sensibles en forçant le type float
+        params_to_log["l2_leaf_reg"] = float(l2_leaf_reg)
+        params_to_log["random_strength"] = float(random_strength)
+        params_to_log["bagging_temperature"] = float(bagging_temperature)
 
+        mlflow.log_params(params_to_log)
         # Evaluation
         preds = model.predict(X_val)
         mae = mean_absolute_error(y_val, preds)
