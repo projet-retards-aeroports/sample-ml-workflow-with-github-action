@@ -24,7 +24,7 @@ def load_from_s3(folder: str, filename: str) -> bytes | None:
     """Download file from S3"""
     key = f"projet_final_lead/{folder}/{filename}"
     try:
-        response = s3.get_object(Bucket=os.getenv("BUCKET"), Key=key)
+        response = s3.get_object(Bucket="pat-jedha-lead-bucket-2026", Key=key)
         print(f"S3 <- {key}")
         return response['Body'].read()
     except Exception as e:
@@ -144,7 +144,7 @@ def train_model(df, model_name: str, run_id: str,
 
 def train_pipeline(run_id: str = None, **catboost_params):
     if run_id is None or run_id == "latest":
-        run_id = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        run_id = "2026-05-25_124326_039dd1"
 
     print(f"=== Lancement du Train Pipeline - Run ID: {run_id} ===\n")
 
