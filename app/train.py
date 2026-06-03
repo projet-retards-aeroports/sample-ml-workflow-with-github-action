@@ -1,4 +1,3 @@
-import argparse
 import pandas as pd
 import io
 import numpy as np
@@ -14,6 +13,8 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
+import argparse  # ← Important
+
 # ==================
 load_dotenv()
 
@@ -34,8 +35,7 @@ def load_from_s3(folder: str, filename: str) -> bytes | None:
 
 # ====================== CONFIGURATION MLFLOW ======================
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-mlflow.set_experiment("Experience_1")
-print(f"MLflow tracking URI : {mlflow.get_tracking_uri()}\n")
+# On ne fait plus set_experiment ici (déplacé dans train_pipeline)
 
 
 def train_model(df, model_name: str, run_id: str,
@@ -51,8 +51,7 @@ def train_model(df, model_name: str, run_id: str,
                 random_strength: float = 1.0,
                 bagging_temperature: float = 0.7):
 
-    #with mlflow.start_run(run_name=f"{model_name}*{run_id}") as run:
-    with mlflow.start_run() as run:
+    with mlflow.start_run(run_name=f"{model_name}*{run_id}") as run:
         print(f"\n=== Entraînement {model_name} ===")
 
         X = df.drop(columns=["scheduled_utc", "revised_utc", "flight_number", "delay_minutes"])
@@ -143,10 +142,15 @@ def train_model(df, model_name: str, run_id: str,
         return model
 
 
-def train_pipeline(run_id: str = None, **catboost_params):
-    if run_id is None :
+def train_pipeline(run_id: str = None, experiment_name: str = "Experience_1", **catboost_params):
+    """Pipeline principal d'entraînement"""
+    
+    if run_id is None:
         run_id = "2026-05-25_124326_039dd1"
 
+    # Configuration de l'experiment MLflow
+    mlflow.set_experiment(experiment_name)
+    print(f"MLflow Experiment : {experiment_name}")
     print(f"=== Lancement du Train Pipeline - Run ID: {run_id} ===\n")
 
     # Departures
@@ -163,14 +167,13 @@ def train_pipeline(run_id: str = None, **catboost_params):
     df_arrive = pd.read_parquet(io.BytesIO(arrive_bytes))
     train_model(df_arrive, "Arrival", run_id, **catboost_params)
 
-    print(f"\n=== Train Pipeline terminé ===")
+    print(f"\n=== Train Pipeline terminé pour l'experiment: {experiment_name} ===")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--run_id", type=str, default="2026-05-25_124326_039dd1")
     parser.add_argument("--experiment_name", type=str, default="Experience_1")
-
 
     # CatBoost arguments
     parser.add_argument("--iterations", type=int, default=300)
@@ -201,4 +204,8 @@ if __name__ == "__main__":
         "bagging_temperature": args.bagging_temperature,
     }
 
-    train_pipeline(args.run_id, args.experiment_name, **catboost_params)
+    train_pipeline(
+        run_id=args.run_id,
+        experiment_name=args.experiment_name,
+        **catboost_params
+    )

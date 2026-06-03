@@ -1,5 +1,3 @@
-name: retards_aeroports
-
 docker_env:
   image: patludolead38/sample-ml-workflow:latest
   environment:
@@ -14,7 +12,7 @@ entry_points:
       run_id: {type: string, default: "2026-05-25_124326_039dd1"}
       experiment_name: {type: string, default: "Experience_1"}
 
-      # CatBoost Hyperparameters
+      # CatBoost Hyperparameters (version légère pour t3.small)
       iterations: {type: int, default: 40}
       learning_rate: {type: float, default: 0.055}
       depth: {type: int, default: 2}
