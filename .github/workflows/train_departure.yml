@@ -1,0 +1,84 @@
+name: Continuous Training Pipeline - Departure
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  repository_dispatch:
+    types: [trigger-training-departure]
+  workflow_dispatch:
+
+jobs:
+  # ==============================================================================
+  # JOB 1: BUILD, TEST & PUSH (The "Artifact Factory")
+  # ==============================================================================
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker Image
+        # We tag it with the Commit SHA (for precise versioning) AND 'latest'
+        run: |
+          IMAGE_ID=${{ secrets.DOCKER_USERNAME }}/sample-ml-workflow
+          docker build -t $IMAGE_ID:${{ github.sha }} .
+          docker tag $IMAGE_ID:${{ github.sha }} $IMAGE_ID:latest
+
+      - name: Run Tests in Docker
+        run: |
+          IMAGE_ID=${{ secrets.DOCKER_USERNAME }}/sample-ml-workflow
+          docker run --rm \
+            -e MLFLOW_TRACKING_URI="file:///tmp/mlruns" \
+            -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+            -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+            -e AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}" \
+            $IMAGE_ID:${{ github.sha }} \
+            python -m pytest tests/ -v
+
+      - name: Push to Docker Hub
+        # Only push if tests passed AND we are on the main branch
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_ID=${{ secrets.DOCKER_USERNAME }}/sample-ml-workflow
+          docker push $IMAGE_ID:${{ github.sha }}
+          docker push $IMAGE_ID:latest
+
+  # ==============================================================================
+  # JOB 2: TRAINING - DEPARTURE ONLY
+  # ==============================================================================
+  train-departure:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Training - Departure Only
+        run: |
+          echo " Lancement entraînement DEPARTURE ONLY"
+          IMAGE_ID=${{ secrets.DOCKER_USERNAME }}/sample-ml-workflow
+          docker run --rm \
+            -e MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}" \
+            -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+            -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+            -e AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}" \
+            $IMAGE_ID:${{ github.sha }} \
+            python app/train.py \
+              --experiment_name Experience_1 \
+              --run_id 2026-05-25_124326_039dd1 \
+              --model_type departure \
+              --iterations 40 \
+              --learning_rate 0.055 \
+              --depth 2 \
+              --early_stopping_rounds 300 \
+              --task_type CPU
