@@ -1,4 +1,43 @@
-#&1&&
+import argparse
+import pandas as pd
+import io
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from catboost import CatBoostRegressor, Pool
+import mlflow
+import mlflow.catboost
+import os
+import boto3
+from botocore.exceptions import ClientError
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ====================== S3 LOADING ======================
+s3 = boto3.client('s3')
+
+def load_from_s3(folder: str, filename: str) -> bytes | None:
+    """Download file from S3"""
+    key = f"projet_final_lead/{folder}/{filename}"
+    try:
+        response = s3.get_object(Bucket=os.getenv("BUCKET"), Key=key)
+        print(f"S3 <- {key}")
+        return response['Body'].read()
+    except Exception as e:
+        print(f"Erreur S3 {key} : {e}")
+        return None
+
+
+# ====================== CONFIGURATION MLFLOW ======================
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+mlflow.set_experiment("pl_retards_vols")
+print(f"MLflow tracking URI : {mlflow.get_tracking_uri()}\n")
+
+
 def train_model(df, model_name: str, run_id: str,
                 iterations: int = 300,
                 learning_rate: float = 0.055,
@@ -111,11 +150,15 @@ def train_pipeline(run_id: str = None, **catboost_params):
 
     # Departures
     depart_bytes = load_from_s3(f"processed/train/{run_id}", f"final_departures_{run_id}.parquet")
+    if depart_bytes is None:
+        raise FileNotFoundError(f"Could not load departures file for run_id: {run_id}")
     df_depart = pd.read_parquet(io.BytesIO(depart_bytes))
     train_model(df_depart, "Departure", run_id, **catboost_params)
 
     # Arrivals
     arrive_bytes = load_from_s3(f"processed/train/{run_id}", f"final_arrivals_{run_id}.parquet")
+    if arrive_bytes is None:
+        raise FileNotFoundError(f"Could not load arrivals file for run_id: {run_id}")
     df_arrive = pd.read_parquet(io.BytesIO(arrive_bytes))
     train_model(df_arrive, "Arrival", run_id, **catboost_params)
 
@@ -124,7 +167,6 @@ def train_pipeline(run_id: str = None, **catboost_params):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
     parser.add_argument("--run_id", type=str, default=None)
 
     # CatBoost arguments
@@ -142,7 +184,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Convert args to dict and pass to train_pipeline
     catboost_params = {
         "iterations": args.iterations,
         "learning_rate": args.learning_rate,
