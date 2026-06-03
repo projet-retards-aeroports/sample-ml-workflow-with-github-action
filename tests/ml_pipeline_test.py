@@ -54,7 +54,7 @@ def check_s3_files_exist(run_id: str) -> bool:
         pytest.skip("BUCKET secret not available (running locally?)")
 
     s3 = boto3.client("s3")
-    prefix = f"processed/train/{run_id}"
+    prefix = f"projet_final_lead/processed/train/{run_id}"
 
     required_files = [
         f"{prefix}/final_departures_{run_id}.parquet",
