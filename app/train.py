@@ -34,7 +34,7 @@ def load_from_s3(folder: str, filename: str) -> bytes | None:
 
 # ====================== CONFIGURATION MLFLOW ======================
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-mlflow.set_experiment("pl_retards_vols")
+mlflow.set_experiment("Experience_1")
 print(f"MLflow tracking URI : {mlflow.get_tracking_uri()}\n")
 
 
