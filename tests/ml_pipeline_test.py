@@ -48,7 +48,8 @@ def mock_df():
 # ==========================================
 def check_s3_files_exist(run_id: str) -> bool:
     """Check if both departure and arrival files exist on S3."""
-    bucket = os.getenv("BUCKET")
+    #bucket = os.getenv("BUCKET")
+    bucket = "pat-jedha-lead-bucket-2026"
     if not bucket:
         pytest.skip("BUCKET secret not available (running locally?)")
 
