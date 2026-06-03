@@ -39,9 +39,9 @@ print(f"MLflow tracking URI : {mlflow.get_tracking_uri()}\n")
 
 
 def train_model(df, model_name: str, run_id: str,
-                iterations: int = 300,
+                iterations: int = 40,
                 learning_rate: float = 0.055,
-                depth: int = 8,
+                depth: int = 2,
                 loss_function: str = "RMSE",
                 eval_metric: str = "RMSE",
                 random_seed: int = 42,
@@ -144,7 +144,7 @@ def train_model(df, model_name: str, run_id: str,
 
 
 def train_pipeline(run_id: str = None, **catboost_params):
-    if run_id is None or run_id == "latest":
+    if run_id is None :
         run_id = "2026-05-25_124326_039dd1"
 
     print(f"=== Lancement du Train Pipeline - Run ID: {run_id} ===\n")
@@ -168,7 +168,9 @@ def train_pipeline(run_id: str = None, **catboost_params):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run_id", type=str, default=None)
+    parser.add_argument("--run_id", type=str, default="2026-05-25_124326_039dd1")
+    parser.add_argument("--experiment_name", type=str, default="Experience_1")
+
 
     # CatBoost arguments
     parser.add_argument("--iterations", type=int, default=300)
@@ -199,4 +201,4 @@ if __name__ == "__main__":
         "bagging_temperature": args.bagging_temperature,
     }
 
-    train_pipeline(args.run_id, **catboost_params)
+    train_pipeline(args.run_id, args.experiment_name, **catboost_params)

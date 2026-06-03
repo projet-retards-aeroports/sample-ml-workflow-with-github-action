@@ -11,12 +11,13 @@ docker_env:
 entry_points:
   main:
     parameters:
-      run_id: {type: string, default: "latest"}
+      run_id: {type: string, default: "2026-05-25_124326_039dd1"}
+      experiment_name: {type: string, default: "Experience_1"}
 
       # CatBoost Hyperparameters
-      iterations: {type: int, default: 300}
+      iterations: {type: int, default: 40}
       learning_rate: {type: float, default: 0.055}
-      depth: {type: int, default: 8}
+      depth: {type: int, default: 2}
       loss_function: {type: string, default: "RMSE"}
       eval_metric: {type: string, default: "RMSE"}
       random_seed: {type: int, default: 42}
@@ -28,6 +29,7 @@ entry_points:
 
     command: >-
       python app/train.py
+      --experiment_name {experiment_name}
       --run_id {run_id}
       --iterations {iterations}
       --learning_rate {learning_rate}
