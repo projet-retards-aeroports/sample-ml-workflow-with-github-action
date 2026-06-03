@@ -47,12 +47,31 @@ def train_model(df, model_name: str, run_id: str,
                 random_seed: int = 42,
                 early_stopping_rounds: int = 300,
                 task_type: str = "CPU",
-                l2_leaf_reg: float = 3,
+                l2_leaf_reg: float = 3.0,          # ← mis en float
                 random_strength: float = 1.0,
                 bagging_temperature: float = 0.7):
 
     with mlflow.start_run(run_name=f"{model_name}*{run_id}") as run:
         print(f"\n=== Entraînement {model_name} ===")
+
+        # ====================== LOG PARAMS EN PREMIER ======================
+        params_to_log = {
+            "iterations": iterations,
+            "learning_rate": learning_rate,
+            "depth": depth,
+            "loss_function": loss_function,
+            "eval_metric": eval_metric,
+            "random_seed": random_seed,
+            "early_stopping_rounds": early_stopping_rounds,
+            "task_type": task_type,
+            "l2_leaf_reg": float(l2_leaf_reg),
+            "random_strength": float(random_strength),
+            "bagging_temperature": float(bagging_temperature),
+        }
+        
+        mlflow.log_params(params_to_log)
+        print("✅ Paramètres MLflow loggés avec succès")
+        # ==================================================================
 
         X = df.drop(columns=["scheduled_utc", "revised_utc", "flight_number", "delay_minutes"])
         y = df["delay_minutes"]
@@ -81,27 +100,16 @@ def train_model(df, model_name: str, run_id: str,
             early_stopping_rounds=early_stopping_rounds,
             verbose=1000,
             task_type=task_type,
-            l2_leaf_reg=l2_leaf_reg,
-            random_strength=random_strength,
-            bagging_temperature=bagging_temperature
+            l2_leaf_reg=float(l2_leaf_reg),          # force float
+            random_strength=float(random_strength),
+            bagging_temperature=float(bagging_temperature)
         )
 
         model.fit(train_pool, eval_set=val_pool, use_best_model=True)
 
-        # Log parameters (version corrigée pour éviter le conflit int/float)
-        params_to_log = {
-            "early_stopping_rounds": early_stopping_rounds,
-            "best_iteration": model.get_best_iteration(),
-            **{k: v for k, v in model.get_params().items() 
-               if k not in ["l2_leaf_reg", "random_strength", "bagging_temperature"]}
-        }
-        
-        # On log manuellement les paramètres sensibles en forçant le type float
-        params_to_log["l2_leaf_reg"] = float(l2_leaf_reg)
-        params_to_log["random_strength"] = float(random_strength)
-        params_to_log["bagging_temperature"] = float(bagging_temperature)
+        # On ne log plus les params ici (déjà fait avant)
+        # mlflow.log_params(...) ← supprimé
 
-        mlflow.log_params(params_to_log)
         # Evaluation
         preds = model.predict(X_val)
         mae = mean_absolute_error(y_val, preds)
@@ -147,7 +155,6 @@ def train_model(df, model_name: str, run_id: str,
         print("="*70 + "\n")
 
         return model
-
 
 def train_pipeline(run_id: str = None, experiment_name: str = "Experience_1", **catboost_params):
     """Pipeline principal d'entraînement"""
